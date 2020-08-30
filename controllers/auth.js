@@ -2,6 +2,7 @@ const User = require("../models/user");
 const Password = require('../models/password');
 const { check, validationResult } = require("express-validator");
 var jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 var expressJwt = require("express-jwt");
 
 exports.signup = (req, res) => {
@@ -37,53 +38,48 @@ exports.ChangePassword = (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(422).json(errors);
   }
+  const x = req.body.mail;
+  console.log(x);
+    if(x){
+      const old_pass = req.body.old_pass;
+      const new_pass = req.body.new_pass;
+      const confirm_pass = req.body.confirm;
+      User.findOne({'email':x},(err,user)=>{
+        console.log(user);
 
-  const password = new Password(req.body);
-  
-  password.save((err, user) => {
-    //console.log(user);
-    if (err) {
-      return res.status(400).json({
-        err: "NOT able to save user in DB"
-      });
+
+        const saq = crypto.createHash('sha256');
+        saq.update('req.body.old_pass');
+        const y = saq.digest('hex');
+
+        const sal = crypto.createHash('sha256');
+        sal.update('req.body.new_pass');
+        const y1 = sal.digest('hex');
+
+        if(user!=null){
+          var hash = user.encry_password;
+          console.log(y);
+          console.log(y1);
+          if(hash==y){
+            if(req.body.new_pass==req.body.confirm){
+              const sal = crypto.createHash('sha256');
+              sal.update(req.body.new_pass);
+              user.encry_password = sal.digest('hex');
+              user.save(function(err,user){
+                if(err) console.log(err);
+                console.log(user.first+"Your Password has been Changed")
+              })
+            }else{
+              console.log('New Password No Match.')
+            }
+          }else{
+            console.log('Enter Correct Old Password');
+          }
+        }else{
+          console.log('Enter Correct Details To Update Password');
+        }
+      })
     }
-    // if(user.mail){
-    //   const old_pass = user.old_pass;
-    //   const new_pass = user.new_pass;
-    //   const confirm_pass = user.confirm;
-    //   const email_pass = user.email;
-    //   console.log(email_pass);
-    //   User.findOne({"email":email_pass},(err,user)=>{
-    //     if(user!=null){
-    //       var hash = user.encry_password;
-    //       bcrypt.compare(old_pass,hash,function(err,res){
-    //         if(res){
-    //           if(new_pass==confirm_pass){
-    //             bcrypt.hash(new_pass,3,function(err,hash){
-    //               user.encry_password = hash;
-    //               user.save(function(err,user){
-    //                 if(err) console.log(err);
-    //                 console.log(user.first+"! Your Password has been Changed")
-    //               });
-    //             });
-    //           }else{
-    //             //password doest match
-    //           }
-    //         };
-    //       })
-    //     }else{
-    //       console.log('Failed to chnage Password');
-    //     }
-    //   })
-    // }
-    res.json({
-      mail:user.mail,
-      oldpass: user.oldpass,
-      newpass: user.newpass,
-      confirm: user.confirm,
-      id: user._id
-    });
-  });
 };
 
 exports.signin = (req, res) => {
